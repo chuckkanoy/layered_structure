@@ -22,13 +22,13 @@ int clientlist[2]; /*the socket numbers through with the 2 clients (e.g. data li
 void * onesocket ( int threadsockfd)
 {
 	/*add codes to declear local variables*/
-	...
+	//...
 
 
 	 while (1)
 	 {
 		/*add codes to receive a frame from threadsocketfd*/
-		...
+		//...
 
 
 		/*if the message in the frame in EXIT close the socket and terminate this thread using
@@ -36,15 +36,16 @@ void * onesocket ( int threadsockfd)
 				return NULL;
 		 other wise send the frame to the other socket (which is stored in clientlist)
 		*/
-		...
+		//...
 
 	 }
 }
 
 int main(int argc, char *argv[])
 {
-	/*add codes to declear local variables*/
-	...
+	/*add codes to declare local variables*/
+	int newsockfd, sockfd, cli_addr, clilen, i, portno;
+	int threadlist[2];
 
 	/*check the number of arguments*/
      if (argc < 2) {
@@ -53,7 +54,10 @@ int main(int argc, char *argv[])
      }
 
 	/*add codes to create a socket (sockfd), bind its address to it and listen to it*/
-	...
+	portno = atoi(argv[2]); //converts argv[2] to an integer
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0)
+		error("ERROR Opening Socket");
 
 
 	for (i=0;i<2;i=i+1) /*only accept two requests*/
@@ -63,11 +67,11 @@ int main(int argc, char *argv[])
 					 (struct sockaddr *) &cli_addr,
 					 &clilen);
 
-		 ...
+		// ...
 		/* store the new socket into clientlist*/
 		 clientlist[i]=newsockfd;
 
-		...
+		//...
 		 /*creat a thread to take care of the new connection*/
 		 pthread_t pth;	/* this is the thread identifier*/
 		 pthread_create(&pth,NULL,onesocket,clientlist[i]);
