@@ -24,19 +24,19 @@ void * onesocket ( int threadsockfd)
     /*add codes to declear local variables*/
     char buffer[256];
     int n;
-    packet incoming_packet, outgoing_packet;
+    frame incoming_frame, outgoing_frame;
 
 
     while (1)
     {
         /*add codes to receive a frame from threadsocketfd*/
         bzero(buffer,256);
-        n = read(threadsockfd,&incoming_packet,sizeof(packet));
+        n = read(threadsockfd,&incoming_frame,sizeof(frame));
         if (n < 0)
             error("ERROR reading from socket");
 
         //if frame message is EXIT then terminate thread and return NULL
-        if(strcmp(incoming_packet.message, "EXIT") == 0)
+        if(strcmp(incoming_frame.my_packet.message, "EXIT\n") == 0)
         {
             close(threadsockfd);
             return NULL;
@@ -47,21 +47,25 @@ void * onesocket ( int threadsockfd)
             if(clientlist[0] == threadsockfd)
             {
                 //copy message over from incoming to outgoing
-                bzero ((char*) &outgoing_packet, sizeof (packet));
-                strcpy (outgoing_packet.nickname, incoming_packet.nickname);
-                strcpy (outgoing_packet.message, incoming_packet.message);
+                bzero ((char*) &outgoing_frame, sizeof (frame));
+                outgoing_frame.type = incoming_frame.type;
+                outgoing_frame.seq_num = incoming_frame.seq_num;
+                strcpy (outgoing_frame.my_packet.nickname, incoming_frame.my_packet.nickname);
+                strcpy (outgoing_frame.my_packet.message, incoming_frame.my_packet.message);
                 //write outgoing packet to socket
-                n = write(clientlist[1], &outgoing_packet, sizeof(packet));
+                n = write(clientlist[1], &outgoing_frame, sizeof(frame));
                 //display error if necessary
                 if(n < 0)
                     error("ERROR writing to socket");
             } else if (clientlist[1] == threadsockfd){
                 //copy message over from incoming to outgoing
-                bzero ((char*) &outgoing_packet, sizeof (packet));
-                strcpy (outgoing_packet.nickname, incoming_packet.nickname);
-                strcpy (outgoing_packet.message, incoming_packet.message);
+                bzero ((char*) &outgoing_frame, sizeof (frame));
+                outgoing_frame.type = incoming_frame.type;
+                outgoing_frame.seq_num = incoming_frame.seq_num;
+                strcpy (outgoing_frame.my_packet.nickname, incoming_frame.my_packet.nickname);
+                strcpy (outgoing_frame.my_packet.message, incoming_frame.my_packet.message);
                 //write outgoing packet to socket
-                n = write(clientlist[0], &outgoing_packet, sizeof(packet));
+                n = write(clientlist[0], &outgoing_frame, sizeof(frame));
                 //display error if necessary
                 if(n < 0)
                     error("ERROR writing to socket");
@@ -77,6 +81,14 @@ int main(int argc, char *argv[])
     int newsockfd, sockfd, cli_addr, clilen, i, portno;
     int threadlist[2];
     struct sockaddr_in serv_addr;
+
+    /*//look at arguments given
+    int size, i;
+    size = argc;
+    printf("%d\n", argc);
+    for(i = 0; i < size; i++){
+        printf("%s\n", argv[i]);
+    }*/
 
     /*check the number of arguments*/
     if (argc < 2)
@@ -98,12 +110,12 @@ int main(int argc, char *argv[])
     if (bind(sockfd, (struct sockaddr *) &serv_addr,
              sizeof(serv_addr)) < 0)
         error("ERROR on binding");
+    listen(sockfd,5);
+        clilen = sizeof(cli_addr);
 
     for (i=0; i<2; i=i+1) /*only accept two requests*/
     {
         /*accept a request from the data link layer*/
-        listen(sockfd,5);
-        clilen = sizeof(cli_addr);
         newsockfd = accept(sockfd,
                            (struct sockaddr *) &cli_addr,
                            &clilen);
@@ -112,6 +124,7 @@ int main(int argc, char *argv[])
 
         /* store the new socket into clientlist*/
         clientlist[i]=newsockfd;
+        printf("create new socket: %d\n", clientlist[i]);
 
         /*creat a thread to take care of the new connection*/
         pthread_t pth;	/* this is the thread identifier*/
