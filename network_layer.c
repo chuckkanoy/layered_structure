@@ -28,10 +28,12 @@ void * rcvmsg (int threadsockfd)
         n = read(threadsockfd,&incoming_packet,sizeof(packet));
         if (n < 0)
             error("ERROR reading from socket");
-        printf("Message: %sFrom machine: %s\n\n ",incoming_packet.message, incoming_packet.nickname);
-        return NULL;
+        if (strcmp(incoming_packet.message, "EXIT") == 0){
+            close(threadsockfd);
+            pthread_exit(NULL);
+        }
+        printf("Message: %sFrom machine: %s\n\n",incoming_packet.message, incoming_packet.nickname);
     }
-    return NULL;
 }
 
 
@@ -43,15 +45,6 @@ int main(int argc, char *argv[])
     struct hostent *server;
     char buffer[256];
     packet incoming_packet, outgoing_packet;
-
-    /*
-    //look at arguments given
-    int size, i;
-    size = argc;
-    printf("%d\n", argc);
-    for(i = 0; i < size; i++){
-        printf("%s\n", argv[i]);
-    }*/
 
     /*check number of aruguments*/
     if (argc < 4)
@@ -77,7 +70,6 @@ int main(int argc, char *argv[])
          server->h_length);
 
     serv_addr.sin_port = htons(portno);
-    printf("%d,%d\n",portno, sockfd);
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
         error("ERROR connecting");
 
@@ -87,17 +79,15 @@ int main(int argc, char *argv[])
     pthread_create(&pth,NULL,rcvmsg,sockfd);
 
     /* the main function will receive messages from keyboard and send packets to the data link layer*/
+    printf("Ready to communicate: \n");
     while (1)
     {
         /*add codes to receive a message from keyboard, wrap it into a packet and send it to the data link layer*/
-        printf("Ready to communicate: \n");
         bzero(buffer,256);
         fgets(buffer,255,stdin);
-        printf("generating packet...\n");
         bzero ((char*) &outgoing_packet, sizeof (packet));
         strcpy (outgoing_packet.nickname, argv[3]);
         strcpy (outgoing_packet.message, buffer);
-        printf("packet(message: %s, name: %s)", outgoing_packet.message, outgoing_packet.nickname);
         n = write(sockfd,&outgoing_packet,sizeof(packet));
         if (n < 0)
             error("ERROR writing to socket");

@@ -24,25 +24,28 @@ int wiresockfd; //the socket through which the wire is connected.
 void * rcvfromwiresend2network_layer ( char *argv[] )
 {
     /*add codes to declare locals*/
-    packet wire_packet;
-    frame wire_frame;
+    packet outgoing_packet;
+    frame incoming_frame;
     int n;
 
     while (1)
     {
         /*add codes receive a frame from wire*/
-        n = read(wiresockfd,&wire_frame,sizeof(frame));
+        n = read(wiresockfd,&incoming_frame,sizeof(frame));
         if (n < 0)
         {
-            printf("%d\n", wiresockfd);
             error("ERROR reading from socket");
         }
 
+        //display frame info on screen
+        printf("Received a frame from wire.\n\tSequence number: %d\n\tFrame type: %d\n\tSending the included packet to network_layer...\n\n", incoming_frame.seq_num, incoming_frame.type);
+
         /*add codes to send the included packet to the network layer*/
-        bzero ((char*) &wire_packet, sizeof (packet));
-        strcpy (wire_packet.nickname, wire_frame.my_packet.nickname);
-        strcpy (wire_packet.message, wire_frame.my_packet.message);
-        n = write(network_layersockfd,&wire_packet,sizeof(packet));
+        bzero ((char*) &outgoing_packet, sizeof (packet));
+        strcpy (outgoing_packet.nickname, incoming_frame.my_packet.nickname);
+        strcpy (outgoing_packet.message, incoming_frame.my_packet.message);
+        network_layersockfd = 5;
+        n = write(network_layersockfd,&outgoing_packet,sizeof(packet));
         if (n < 0)
             error("ERROR writing to socket");
     }
@@ -52,22 +55,13 @@ void * rcvfromwiresend2network_layer ( char *argv[] )
 int main(int argc, char *argv[])
 {
     /*add codes to declear local variables*/
-    int clilen, portno, n, newsockfd;
+    int clilen, portno, n, newsockfd, seq_num = 0;
     int threadlist[2];
     struct hostent *server;
     struct sockaddr_in serv_addr, cli_addr;
     char buffer[256];
-    packet incoming_packet, network_packet, wire_packet;
-    frame network_frame, wire_frame;
-
-    /*//look at arguments given
-    int size, i;
-    size = argc;
-    printf("%d\n", argc);
-    for(i = 0; i < size; i++)
-    {
-        printf("%s\n", argv[i]);
-    }*/
+    packet incoming_packet;
+    frame outgoing_frame;
 
     /*check numeber of arguments*/
     if (argc < 4)
@@ -126,21 +120,25 @@ int main(int argc, char *argv[])
     {
         /*add codes to receive a packet from the network layer*/
         bzero(buffer,256);
-        n = read(newsockfd,&network_packet,sizeof(packet));
+        n = read(newsockfd,&incoming_packet,sizeof(packet));
         if (n < 0)
         {
             error("ERROR reading from socket");
         }
 
+        //print status
+        printf("Received a packet from network_layer\nSending a frame to wire...\n\n");
+
         /* add codes to wrap the packet into a frame*/
-        printf("wrapping frame...\n");
-        network_frame.seq_num = 0;
-        network_frame.type = 0;
-        network_frame.my_packet = network_packet;
-        printf("frame(seq_num: %d, type: %d, message: %s, name: %s)", network_frame.seq_num, network_frame.type, network_frame.my_packet.nickname, network_frame.my_packet.message);
+        outgoing_frame.seq_num = seq_num;
+        outgoing_frame.type = 0;
+        outgoing_frame.my_packet = incoming_packet;
 
         /*add codes to send the frame to the wire*/
-        n = write(wiresockfd, &network_frame, sizeof(frame));
+        n = write(wiresockfd, &outgoing_frame, sizeof(frame));
+
+        //iterate sequence number
+        seq_num++;
 
         /*if the message is "EXIT" */
         if (strcmp (incoming_packet.message, "EXIT\n")==0)

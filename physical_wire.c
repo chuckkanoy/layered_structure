@@ -22,7 +22,7 @@ void * onesocket ( int threadsockfd)
 {
     /*add codes to declear local variables*/
     char buffer[256];
-    int n;
+    int n, sockfd;
     frame incoming_frame, outgoing_frame;
 
 
@@ -34,6 +34,9 @@ void * onesocket ( int threadsockfd)
         if (n < 0)
             error("ERROR reading from socket");
 
+        //print status
+        printf("Recieved a frame from machine: %s\n", incoming_frame.my_packet.nickname);
+
         //if frame message is EXIT then terminate thread and return NULL
         if(strcmp(incoming_frame.my_packet.message, "EXIT\n") == 0)
         {
@@ -44,33 +47,25 @@ void * onesocket ( int threadsockfd)
         else
         {
             if(clientlist[0] == threadsockfd)
-            {
-                //copy message over from incoming to outgoing
-                bzero ((char*) &outgoing_frame, sizeof (frame));
-                outgoing_frame.type = incoming_frame.type;
-                outgoing_frame.seq_num = incoming_frame.seq_num;
-                strcpy (outgoing_frame.my_packet.nickname, incoming_frame.my_packet.nickname);
-                strcpy (outgoing_frame.my_packet.message, incoming_frame.my_packet.message);
-                //write outgoing packet to socket
-                n = write(clientlist[1], &outgoing_frame, sizeof(frame));
-                //display error if necessary
-                if(n < 0)
-                    error("ERROR writing to socket");
-            } else if (clientlist[1] == threadsockfd){
-                //copy message over from incoming to outgoing
-                bzero ((char*) &outgoing_frame, sizeof (frame));
-                outgoing_frame.type = incoming_frame.type;
-                outgoing_frame.seq_num = incoming_frame.seq_num;
-                strcpy (outgoing_frame.my_packet.nickname, incoming_frame.my_packet.nickname);
-                strcpy (outgoing_frame.my_packet.message, incoming_frame.my_packet.message);
-                //write outgoing packet to socket
-                n = write(clientlist[0], &outgoing_frame, sizeof(frame));
-                //display error if necessary
-                if(n < 0)
-                    error("ERROR writing to socket");
-            }
-        }
+                sockfd = clientlist[1];
+            else
+                sockfd = clientlist[0];
+            //copy message over from incoming to outgoing
+            bzero ((char*) &outgoing_frame, sizeof (frame));
+            outgoing_frame.type = incoming_frame.type;
+            outgoing_frame.seq_num = incoming_frame.seq_num;
+            strcpy (outgoing_frame.my_packet.nickname, incoming_frame.my_packet.nickname);
+            strcpy (outgoing_frame.my_packet.message, incoming_frame.my_packet.message);
 
+            //print status
+            printf("Sending it to machine on the other side...\n\n");
+
+            //write outgoing packet to socket
+            n = write(sockfd, &outgoing_frame, sizeof(frame));
+            //display error if necessary
+            if(n < 0)
+                error("ERROR writing to socket");
+        }
     }
 }
 
@@ -80,14 +75,6 @@ int main(int argc, char *argv[])
     int newsockfd, sockfd, clilen, i, portno;
     long int threadlist[2];
     struct sockaddr_in serv_addr, cli_addr;
-
-    /*//look at arguments given
-    int size, i;
-    size = argc;
-    printf("%d\n", argc);
-    for(i = 0; i < size; i++){
-        printf("%s\n", argv[i]);
-    }*/
 
     /*check the number of arguments*/
     if (argc < 2)
