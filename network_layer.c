@@ -29,7 +29,7 @@ void * rcvmsg (int threadsockfd)
         if (n < 0)
             error("ERROR reading from socket");
         printf("Message: %sFrom machine: %s\n\n ",incoming_packet.message, incoming_packet.nickname);
-
+        return NULL;
     }
     return NULL;
 }
@@ -38,8 +38,8 @@ void * rcvmsg (int threadsockfd)
 int main(int argc, char *argv[])
 {
     /*add codes for local variables*/
-    int newsockfd, sockfd, cli_addr, clilen, n, portno;
-    struct sockaddr_in serv_addr;
+    int newsockfd, sockfd, clilen, n, portno;
+    struct sockaddr_in serv_addr, cli_addr;
     struct hostent *server;
     char buffer[256];
     packet incoming_packet, outgoing_packet;
@@ -65,7 +65,6 @@ int main(int argc, char *argv[])
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
         error("ERROR opening socket");
-    printf("%d\n", sockfd);
     server = gethostbyname(argv[1]);
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
@@ -78,6 +77,7 @@ int main(int argc, char *argv[])
          server->h_length);
 
     serv_addr.sin_port = htons(portno);
+    printf("%d,%d\n",portno, sockfd);
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
         error("ERROR connecting");
 
@@ -93,9 +93,11 @@ int main(int argc, char *argv[])
         printf("Ready to communicate: \n");
         bzero(buffer,256);
         fgets(buffer,255,stdin);
+        printf("generating packet...\n");
         bzero ((char*) &outgoing_packet, sizeof (packet));
         strcpy (outgoing_packet.nickname, argv[3]);
         strcpy (outgoing_packet.message, buffer);
+        printf("packet(message: %s, name: %s)", outgoing_packet.message, outgoing_packet.nickname);
         n = write(sockfd,&outgoing_packet,sizeof(packet));
         if (n < 0)
             error("ERROR writing to socket");

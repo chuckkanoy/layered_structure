@@ -52,10 +52,10 @@ void * rcvfromwiresend2network_layer ( char *argv[] )
 int main(int argc, char *argv[])
 {
     /*add codes to declear local variables*/
-    int cli_addr, clilen, portno, n, newsockfd;
+    int clilen, portno, n, newsockfd;
     int threadlist[2];
     struct hostent *server;
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in serv_addr, cli_addr;
     char buffer[256];
     packet incoming_packet, network_packet, wire_packet;
     frame network_frame, wire_frame;
@@ -91,9 +91,6 @@ int main(int argc, char *argv[])
     bcopy((char *)server->h_addr,
          (char *)&serv_addr.sin_addr.s_addr,
          server->h_length);
-
-	//printf ("server ip is %ul\n",server->h_addr );
-
     serv_addr.sin_port = htons(portno);
     if (connect(wiresockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
         error("ERROR connecting");
@@ -107,7 +104,7 @@ int main(int argc, char *argv[])
      if (network_layersockfd < 0)
         error("ERROR opening socket");
      bzero((char *) &serv_addr, sizeof(serv_addr));
-     portno = atoi(argv[1]);
+     portno = atoi(argv[3]);
      serv_addr.sin_family = AF_INET;
      serv_addr.sin_addr.s_addr = INADDR_ANY;
 
@@ -130,16 +127,17 @@ int main(int argc, char *argv[])
         /*add codes to receive a packet from the network layer*/
         bzero(buffer,256);
         n = read(newsockfd,&network_packet,sizeof(packet));
-        printf("read network\n");
         if (n < 0)
         {
             error("ERROR reading from socket");
         }
 
         /* add codes to wrap the packet into a frame*/
+        printf("wrapping frame...\n");
         network_frame.seq_num = 0;
         network_frame.type = 0;
         network_frame.my_packet = network_packet;
+        printf("frame(seq_num: %d, type: %d, message: %s, name: %s)", network_frame.seq_num, network_frame.type, network_frame.my_packet.nickname, network_frame.my_packet.message);
 
         /*add codes to send the frame to the wire*/
         n = write(wiresockfd, &network_frame, sizeof(frame));
@@ -147,6 +145,7 @@ int main(int argc, char *argv[])
         /*if the message is "EXIT" */
         if (strcmp (incoming_packet.message, "EXIT\n")==0)
         {
+            printf("entered EXIT\n");
             pthread_cancel(wirepth); //kill the child thread
             close(wiresockfd);
             close (network_layersockfd); //close sockets

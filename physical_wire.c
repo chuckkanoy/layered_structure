@@ -17,7 +17,6 @@ void error(const char *msg)
 /*Global variables that will be accessed in the thread function  */
 int clientlist[2]; /*the socket numbers through with the 2 clients (e.g. data link layer) are connected to this wire*/
 
-
 /*the thread function that will receive frames from socket (i.e. data_link layer) and send the received frames to another socket*/
 void * onesocket ( int threadsockfd)
 {
@@ -78,9 +77,9 @@ void * onesocket ( int threadsockfd)
 int main(int argc, char *argv[])
 {
     /*add codes to declare local variables*/
-    int newsockfd, sockfd, cli_addr, clilen, i, portno;
-    int threadlist[2];
-    struct sockaddr_in serv_addr;
+    int newsockfd, sockfd, clilen, i, portno;
+    long int threadlist[2];
+    struct sockaddr_in serv_addr, cli_addr;
 
     /*//look at arguments given
     int size, i;
@@ -111,14 +110,15 @@ int main(int argc, char *argv[])
              sizeof(serv_addr)) < 0)
         error("ERROR on binding");
     listen(sockfd,5);
-        clilen = sizeof(cli_addr);
+    clilen = sizeof(cli_addr);
 
-    for (i=0; i<2; i=i+1) /*only accept two requests*/
+    for (i=0; i<2; i++) /*only accept two requests*/
     {
         /*accept a request from the data link layer*/
         newsockfd = accept(sockfd,
                            (struct sockaddr *) &cli_addr,
                            &clilen);
+
         if (newsockfd < 0)
             error("ERROR on accept");
 
@@ -131,6 +131,7 @@ int main(int argc, char *argv[])
         pthread_create(&pth,NULL,onesocket,clientlist[i]);
         threadlist[i]=pth; /*save the thread identifier into an array*/
     }
+    printf("closed to further connections\n");
     close(sockfd); /*so that wire will not accept further connection request*/
     pthread_join(threadlist[0],NULL);
     pthread_join(threadlist[1],NULL); /* the main function will not terminated untill both threads finished*/
